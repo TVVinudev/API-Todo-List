@@ -14,6 +14,7 @@ List data = [];
 List fetchdata = [];
 
 final _controller = TextEditingController();
+final _controller1 = TextEditingController();
 
 class todoList extends StatefulWidget {
   const todoList({super.key});
@@ -23,15 +24,47 @@ class todoList extends StatefulWidget {
 }
 
 class _todoListState extends State<todoList> {
+  //get function in API
   Future Fetch() async {
-    final response = await http.get(Uri.parse("https://api.nstack.in/v1/todos?page=1&limit=10"));
-    if (response.statusCode == 200) {
-      print("successful");
-      final data = jsonDecode(response.body);
-      List datalist = data['items'];
-      setState(() {
-        fetchdata = datalist;
-      });
+    try {
+      final response = await http.get(Uri.parse("https://api.nstack.in/v1/todos"));
+      if (response.statusCode == 200) {
+        //print("successful");
+        final data = jsonDecode(response.body);
+        List datalist = data['items'];
+        setState(() {
+          fetchdata = datalist;
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  //POST Function in API
+
+  Future Post() async {
+    final uri = Uri.parse('https://api.nstack.in/v1/todos');
+    final body = {"title": _controller.text, "description": _controller1.text, "is_completed": false};
+    try {
+      final response = await http.post(uri, body: json.encode(body), headers: {'Content-Type': 'application/json'});
+      if (response.statusCode == 201) {
+        print('successfull ');
+        Fetch();
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future Delete(String id) async{
+    try{
+      final response = await http.delete(Uri.parse('https://api.nstack.in/v1/todos/$id'));
+      if(response.statusCode == 200){
+        print('deleted');
+      }
+    } catch(e){
+      print(e);
     }
   }
 
@@ -48,18 +81,19 @@ class _todoListState extends State<todoList> {
         title: Text('Todo List'),
         backgroundColor: Colors.lightGreen,
       ),
-      body: RefreshIndicator(
-        onRefresh: Fetch,
-        child: ListView.builder(
-            itemCount: fetchdata.length,
-            itemBuilder: (context, index) {
-              final item = fetchdata[index];
-              return ListTile(
-                title: Text(item['title']),
-                subtitle: Text(item['description']),
-              );
-            }),
-      ),
+      body: ListView.builder(
+          itemCount: fetchdata.length,
+          itemBuilder: (context, index) {
+            final item = fetchdata[index];
+            return ListTile(
+              title: Text(item['title']),
+              subtitle: Text(item['description']),
+              trailing: IconButton(onPressed: (){
+                Delete(item['_id']);
+                Fetch();
+              }, icon: Icon(Icons.delete)),
+            );
+          }),
       floatingActionButton: FloatingActionButton(
           child: Icon(Icons.add),
           onPressed: () {
@@ -73,17 +107,18 @@ class _todoListState extends State<todoList> {
                           controller: _controller,
                         ),
                       ),
+                      Container(
+                        child: TextField(
+                          controller: _controller1,
+                        ),
+                      ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
                               onPressed: () {
-                                setState(() {
-                                  if (_controller.text.isNotEmpty) {
-                                    data.add(_controller.text);
-                                    _controller.clear();
-                                  }
-                                });
+                                Post();
+                                Navigator.pop(context);
                               },
                               child: Text('Add'))
                         ],
